@@ -1,0 +1,296 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                    String          @id
+  email                 String          @unique
+  password              String?
+  name                  String
+  status                String
+  inviteToken           String?
+  inviteExpires         DateTime?
+  emailSentAt           DateTime?
+
+  asset                 Asset[]
+  assessment            Assessment[]
+  framework             Framework[]
+  control               Control[]
+  complianceAssessment  ComplianceAssessment[]
+  complianceAudit       ComplianceAudit[]
+  evidence              Evidence[]
+  project               Project[]
+  auditLog              AuditLog[]
+
+  roleId                String
+  role                  Role            @relation(fields: [roleId], references: [id])
+
+  failedAttempts        Int             @default(0)
+  firstFailedAt         DateTime?
+  lockUntil             DateTime?
+  passwordExpiresAt     DateTime?
+
+  createdAt             DateTime        @default(now())
+}
+
+model Asset {
+  id                  String          @id @default(uuid())
+  name                String
+  type                String
+  category            String
+  classification      String
+  criticality         String
+  userId              String
+  user                User            @relation(fields: [userId], references: [id])
+
+  createdAt           DateTime        @default(now())
+}
+
+model Assessment {
+  id                  String          @id
+  name                String
+  description         String
+  version             String
+  status              String
+  riskMatrix          String
+  authors             String 
+  reviewers           String
+  dueDate             DateTime
+  targetDate          DateTime
+  owner               String
+  risksInScope        Risk[]
+  progress            Int
+  lastUpdated         DateTime
+  userId              String
+  user                User            @relation(fields: [userId], references: [id])
+
+  createdAt           DateTime        @default(now())
+}
+
+model Risk {
+  id                  String          @id
+  category            String
+  customAssets        String[]
+  customControls      String[]
+  description         String
+  inherentImpact      Int
+  inherentLikelihood  Int
+  inherentScore       Int
+  linkedAssets        String[]
+  linkedControls      String[]
+  owner               String
+  residualImpact      Int
+  residualLikelihood  Int
+  residualScore       Int
+  status              String
+  title               String
+  assessmentId        String
+  assessment          Assessment      @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  createdAt           DateTime        @default(now())
+}
+
+model Framework {
+  id                  String          @id
+  name                String
+  description         String
+  isCustom            Boolean
+  totalControls       Int
+  version             String
+  userId              String
+  user                User            @relation(fields: [userId], references: [id])
+  requirements        Requirement[]
+
+  createdAt           DateTime        @default(now())
+}
+
+model Requirement {
+  id                  String           @id @default(uuid())
+  name                String
+  description         String
+  owner               String
+  frequency           String
+
+  frameworkId         String
+  framework           Framework        @relation(fields: [frameworkId], references: [id], onDelete: Cascade)
+
+  frameworks          String[]
+
+  controlSchema       Json
+  customValues        Json
+
+  createdAt           DateTime         @default(now())
+}
+
+model Control {
+  id                  String           @id
+  name                String
+  description         String
+  type                String
+  category            String
+  frequency           String
+  link                String
+  tags                String[]
+  owner               String
+  userId              String
+  user                User             @relation(fields: [userId], references: [id])
+
+  createdAt           DateTime         @default(now())
+}
+
+model ComplianceAssessment {
+  id                  String           @id
+  name                String
+  frameworkId         String
+  project             String
+  author              String
+  status              String
+  progress            Int
+  lastUpdated         DateTime
+  userId              String
+  user                User             @relation(fields: [userId], references: [id])
+
+  createdAt           DateTime         @default(now())
+}
+
+model ComplianceAudit {
+  id                  String           @id
+  name                String
+  frameworkId         String
+  project             String
+  author              String
+  status              String
+  progress            Int
+  lastUpdated         DateTime
+  userId              String
+  user                User             @relation(fields: [userId], references: [id])
+
+  createdAt           DateTime         @default(now())
+}
+
+model Evidence {
+  id                  String           @id
+  title               String
+  type                String
+  format              String
+  fileUrl             String
+  uploadedAt          DateTime
+  userId              String
+  user                User             @relation(fields: [userId], references: [id])
+
+  createdAt           DateTime         @default(now())
+}
+
+model Project {
+  id                  String           @id
+  name                String
+  key                 String
+  description         String
+  owner               String
+  startDate           DateTime
+  endDate             DateTime
+  userId              String
+  user                User             @relation(fields: [userId], references: [id])
+  tasks               Task[]
+
+  createdAt           DateTime         @default(now())
+}
+
+model Task {
+  id                  String           @id
+  title               String
+  description         String
+  severity            String
+  stage               String
+  owner               String
+  progress            Int
+  startDate           DateTime
+  dueDate             DateTime
+  projectId           String
+  project             Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  createdAt           DateTime         @default(now())
+}
+
+model AuditLog {
+  id                  String           @id
+  timestamp           DateTime
+  name                String
+  action              String
+  details             String
+  userId              String
+  user                User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt           DateTime         @default(now())
+}
+
+model Role {
+  id                  String           @id @default(uuid())
+  name                String           @unique
+  permissions         RolePermission[]
+  users               User[]
+
+  createdAt           DateTime         @default(now())
+}
+
+model Permission {
+  id                  String           @id @default(uuid())
+  resource            String
+  action              String
+  
+  roles               RolePermission[]
+
+  createdAt           DateTime         @default(now())
+
+  @@unique([resource, action])
+}
+
+model RolePermission {
+  id                  String           @id @default(uuid())
+
+  roleId              String
+  permissionId        String
+
+  role                Role             @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission          Permission       @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  createdAt           DateTime         @default(now())
+
+  @@unique([roleId, permissionId])
+}
+
+model PasswordPolicy {
+  id                  String           @id
+  lowercase           Boolean
+  uppercase           Boolean
+  number              Boolean
+  symbol              Boolean
+  noEmail             Boolean
+  noFirstName         Boolean
+  noLastName          Boolean
+  noCommon            Boolean
+  minLength           Int
+  expiry              Int
+}
+
+model AssetOption {
+  id                  String           @id @default(uuid())
+  type                String
+  value               String
+  label               String
+
+  createdAt           DateTime         @default(now())
+  @@unique([type, value], name: "type_value")
+}
+
+model GlobalStats {
+  id                  String           @id
+  totalUsers          Int              @default(0)
+  totalAssets         Int              @default(0)
+  totalAssessments    Int              @default(0)
+}
