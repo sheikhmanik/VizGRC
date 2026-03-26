@@ -282,6 +282,25 @@ CREATE TABLE "GlobalStats" (
     CONSTRAINT "GlobalStats_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "Findings" (
+    "id" TEXT NOT NULL,
+    "nodeId" TEXT NOT NULL,
+    "controlId" TEXT NOT NULL,
+    "status" TEXT NOT NULL,
+    "observation" TEXT,
+    "mitigations" TEXT[],
+    "manualMitigations" TEXT[],
+    "evidenceCount" INTEGER NOT NULL DEFAULT 0,
+    "evidence" TEXT NOT NULL,
+    "assessmentId" TEXT,
+    "auditId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Findings_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
@@ -296,6 +315,9 @@ CREATE UNIQUE INDEX "RolePermission_roleId_permissionId_key" ON "RolePermission"
 
 -- CreateIndex
 CREATE UNIQUE INDEX "AssetOption_type_value_key" ON "AssetOption"("type", "value");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Findings_nodeId_controlId_key" ON "Findings"("nodeId", "controlId");
 
 -- AddForeignKey
 ALTER TABLE "User" ADD CONSTRAINT "User_roleId_fkey" FOREIGN KEY ("roleId") REFERENCES "Role"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

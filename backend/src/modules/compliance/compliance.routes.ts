@@ -159,4 +159,79 @@ export default function Compliance(fastify: FastifyInstance) {
       reply.status(500).send({ error: "Failed to update complianceAssessment" });
     }
   });
+
+  fastify.post("/save-findings", async (req, reply) => {
+    const {
+      nodeId,
+      controlId,
+      status,
+      observation,
+      mitigations,
+      manualMitigations,
+      evidenceCount,
+      evidence,
+      assessmentId,
+      auditId
+    } = req.body as any;
+  
+    try {
+      const result = await fastify.prisma.findings.upsert({
+        where: {
+          nodeId_controlId: {
+            nodeId,
+            controlId
+          }
+        },
+        update: {
+          status,
+          observation,
+          mitigations,
+          manualMitigations,
+          evidenceCount,
+          evidence,
+          assessmentId,
+          auditId
+        },
+        create: {
+          nodeId,
+          controlId,
+          status,
+          observation,
+          mitigations,
+          manualMitigations,
+          evidenceCount,
+          evidence,
+          assessmentId,
+          auditId
+        }
+      });
+  
+      reply.send(result);
+    } catch (err) {
+      console.error(err);
+      reply.status(500).send({ error: "Failed to save finding" });
+    }
+  });
+
+  fastify.get("/get-findings/:nodeId/:controlId", async (req, reply) => {
+    const { nodeId, controlId } = req.params as { nodeId: string; controlId: string };
+  
+    try {
+      const finding = await fastify.prisma.findings.findUnique({
+        where: {
+          nodeId_controlId: {
+            nodeId,
+            controlId
+          }
+        }
+      });
+  
+      if (!finding) return reply.send({ error: "Finding not found" });
+  
+      reply.send(finding);
+    } catch (err) {
+      console.error(err);
+      reply.status(500).send({ error: "Failed to fetch finding" });
+    }
+  });
 }

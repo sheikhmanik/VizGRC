@@ -294,3 +294,26 @@ model GlobalStats {
   totalAssets         Int              @default(0)
   totalAssessments    Int              @default(0)
 }
+
+model Findings {
+  id                String   @id @default(uuid())
+  nodeId            String
+  controlId         String
+
+  status            String
+  observation       String?
+
+  mitigations       String[]
+  manualMitigations String[]
+
+  evidenceCount     Int @default(0)
+  evidence          String
+
+  assessmentId      String?
+  auditId           String?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([nodeId, controlId])
+}

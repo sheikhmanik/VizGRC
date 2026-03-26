@@ -29,7 +29,6 @@ const EvidenceModule: React.FC<EvidenceModuleProps> = ({ addAuditEntry }) => {
 
     const uploadRes = await api.post("/upload/evidence", formData);
     const fileUrl = uploadRes.data.url;
-    console.log('File uploaded to:', fileUrl);
 
     const item = {
       id: `E-${evidence.length + 1}`,

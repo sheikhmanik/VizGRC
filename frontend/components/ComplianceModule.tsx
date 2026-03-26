@@ -10,7 +10,8 @@ import {
   FileText, Layout, MessageSquare, XCircle, FileStack, 
   FileUp, Info, Download, Edit2, InfoIcon, ExternalLink,
   PlusCircle, User, Calendar, Briefcase, Zap, ClipboardList,
-  Trash2, Terminal, ShieldAlert
+  Trash2, Terminal, ShieldAlert,
+  Upload
 } from 'lucide-react';
 import { Assessment, NavigationTab, Control, Framework } from '../types';
 import api from './api/AxiosInstance';
@@ -66,6 +67,8 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editingAssessmentId, setEditingAssessmentId] = useState<string | null>(null);
   const [editingAuditId, setEditingAuditId] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [currentFindingDetails, setCurrentFindingDetails] = useState<any>(null);
 
   // Form State for New Assessment
   const [newAssessmentForm, setNewAssessmentForm] = useState({
@@ -84,9 +87,14 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
   [selectedAuditId, audits]);
 
   const engagementControls = useMemo(() => {
-    if (!activeAssessment || !controls) return [];
-    return (controls || []).filter(c => c.frameworks.includes(activeAssessment.frameworkId));
-  }, [activeAssessment, controls]);
+    if (viewMode === 'assessment') {
+      if (!activeAssessment || !controls) return [];
+      return (controls || []).filter(c => c.frameworks.includes(activeAssessment.frameworkId));
+    } else {
+      if (!activeAudit || !controls) return [];
+      return (controls || []).filter(c => c.frameworks.includes(activeAudit.frameworkId));
+    }
+  }, [activeAssessment, activeAudit, controls]);
 
   const chartData = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -106,6 +114,12 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
       color: opt.color
     })).filter(d => d.value > 0);
   }, [findings, engagementControls]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
 
   const handleCreateAssessment = (e: React.FormEvent) => {
     e.preventDefault();
@@ -245,21 +259,59 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
       setSelectedAssessmentId(null);
       setSelectedAuditId(null);
     }
+    setCurrentFindingDetails(null);
   }, [activeTab]);
 
   // DRILL-DOWN: THE NEXT PAGE
-  if (activeDrillNode && activeAssessment) {
+  if (activeDrillNode && (activeAssessment || activeAudit)) {
     const { controlId, nodeId, index } = activeDrillNode;
     const control = controls.find(c => c.id === controlId);
     const nodeState = findings[nodeId] || { status: 'To do', mitigations: [], manualMitigations: [], observation: '', evidenceCount: 0 };
     const requirementText = control?.customValues?.[nodeId] || control?.description;
+
+    async function handleCommitFindings() {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      const uploadRes = await api.post("/upload/evidence", formData);
+      const fileUrl = uploadRes.data.url;
+
+      const payload = {
+        nodeId,
+        controlId,
+        status: nodeState.status,
+        observation: nodeState.observation,
+        mitigations: nodeState.mitigations,
+        manualMitigations: nodeState.manualMitigations,
+        evidenceCount: nodeState.evidenceCount,
+        evidence: fileUrl,
+        assessmentId: activeAssessment?.id || null,
+        auditId: activeAudit?.id || null,
+      };
+    
+      try {
+        await api.post("/compliance/save-findings", payload);
+    
+        addAuditEntry(
+          'Update Finding',
+          `Committed compliance results for ${index} in engagement ${activeAssessment ? activeAssessment.id : activeAudit.id}. Status: ${nodeState.status}`
+        );
+    
+        setActiveDrillNode(null);
+      } catch (err) {
+        console.error(err);
+        alert("Failed to save finding");
+      }
+    }
 
     return (
       <div className="space-y-12 animate-in slide-in-from-right-8 duration-500 pb-32">
         <div className="flex flex-col gap-6 pb-8 border-b border-slate-200 sticky top-0 bg-[#f8fafc]/90 backdrop-blur-xl z-[100]">
           <div className="flex items-center gap-6 max-w-7xl mx-auto w-full px-6">
             <button 
-              onClick={() => setActiveDrillNode(null)}
+              onClick={() => {
+                setActiveDrillNode(null);
+                setCurrentFindingDetails(null);
+              }}
               className="p-4 bg-white border border-slate-200 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all shadow-sm active:scale-95"
             >
               <ArrowLeft size={24} />
@@ -433,17 +485,33 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
                <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2 px-1">
                 <FileStack size={14} className="text-amber-500" /> Evidence Option
               </h4>
-              <div className="p-8 bg-white border border-slate-200 rounded-[2.5rem] flex flex-col items-center justify-center text-center group hover:border-blue-200 transition-all cursor-pointer border-dashed border-2">
+              {/* <div className="p-8 bg-white border border-slate-200 rounded-[2.5rem] flex flex-col items-center justify-center text-center group hover:border-blue-200 transition-all cursor-pointer border-dashed border-2">
                   <FileUp size={32} className="text-slate-300 group-hover:text-blue-500 transition-colors mb-3" />
                   <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Upload/Link Evidence</p>
-              </div>
+              </div> */}
+              <label className="border-2 border-dashed border-slate-100 rounded-3xl p-12 flex flex-col items-center justify-center bg-slate-50/50 hover:bg-slate-50 transition-colors cursor-pointer group">
+                <input
+                  type="file"
+                  accept=".pdf,.xlsx,.xls,image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-slate-400 group-hover:text-blue-500 transition-colors mb-4">
+                    <Upload size={24} />
+                </div>
+                {selectedFile ? (
+                  <p className="text-sm text-slate-500 font-medium">{selectedFile.name}</p>
+                ) : (
+                  <div>
+                    <p className="text-sm text-slate-500 font-medium">Drop artifacts here</p>
+                    <p className="text-[10px] text-slate-400 mt-2">Maximum file size 50MB</p>
+                  </div>
+                )}
+              </label>
             </section>
 
             <button 
-              onClick={() => {
-                addAuditEntry('Update Finding', `Committed compliance results for ${index} in engagement ${activeAssessment.id}. Status: ${nodeState.status}`);
-                setActiveDrillNode(null);
-              }}
+              onClick={handleCommitFindings}
               className="w-full py-5 bg-blue-600 hover:bg-blue-700 text-white rounded-[2rem] text-[12px] font-bold uppercase tracking-[0.2em] shadow-2xl shadow-blue-500/20 transition-all active:scale-95"
             >
               Commit Changes
@@ -457,7 +525,6 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
   // MAIN WORKSPACE (REQUIREMENT TREE VIEW)
   if (selectedAssessmentId && activeAssessment) {
     const framework = frameworks.find(f => f.id === activeAssessment.frameworkId);
-
     return (
       <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-500 pb-32 max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-2">
@@ -554,6 +621,15 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
                           const idxLabel = control.customValues?.[`_idx_${node.id}`] || '';
                           const nodeText = control.customValues?.[node.id] || '';
                           const nodeState = findings[node.id] || { status: 'To do' };
+                          
+                          async function handleActiveDrillNode({ controlId, nodeId, index }: { controlId: string; nodeId: string; index: string }) {
+                            setActiveDrillNode({ controlId, nodeId, index });
+                            await api.get(`/compliance/get-findings/${nodeId}/${controlId}`)
+                            .then(res => setCurrentFindingDetails(res.data))
+                            .catch(err => {
+                              console.error("Failed to fetch finding details:", err);
+                            });
+                          }
 
                           return (
                              <div 
@@ -569,7 +645,7 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
                                       </span>
                                       <div className="flex flex-col">
                                          <button 
-                                            onClick={() => setActiveDrillNode({ controlId: control.id, nodeId: node.id, index: idxLabel })}
+                                            onClick={() => handleActiveDrillNode({ controlId: control.id, nodeId: node.id, index: idxLabel })}
                                             className="text-[14px] text-indigo-600 font-semibold text-left hover:underline transition-all leading-relaxed"
                                          >
                                             {idxLabel} - {nodeText}
@@ -598,13 +674,17 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
   }
   if (selectedAuditId && activeAudit) {
     const framework = frameworks.find(f => f.id === activeAudit.frameworkId);
-
     return (
       <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-500 pb-32 max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-2">
            <div className="flex items-center gap-2 text-[11px] text-blue-600 font-medium tracking-wide">
-              <button onClick={() => setSelectedAuditId(null)} className="p-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50">
-                 <ChevronLeft size={14} />
+              <button
+                onClick={() => {
+                  setSelectedAuditId(null);
+                }}
+                className="p-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50"
+              >
+                <ChevronLeft size={14} />
               </button>
               <Layout size={14} /> <span className="uppercase font-bold tracking-widest">Engagement Workspace</span>
            </div>
@@ -696,6 +776,15 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
                           const nodeText = control.customValues?.[node.id] || '';
                           const nodeState = findings[node.id] || { status: 'To do' };
 
+                          async function handleActiveDrillNode({ controlId, nodeId, index }: { controlId: string; nodeId: string; index: string }) {
+                            setActiveDrillNode({ controlId, nodeId, index });
+                            await api.get(`/compliance/get-findings/${nodeId}/${controlId}`)
+                            .then(res => setCurrentFindingDetails(res.data))
+                            .catch(err => {
+                              console.error("Failed to fetch finding details:", err);
+                            });
+                          }
+
                           return (
                              <div 
                                 key={node.id} 
@@ -710,7 +799,7 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
                                       </span>
                                       <div className="flex flex-col">
                                          <button 
-                                            onClick={() => setActiveDrillNode({ controlId: control.id, nodeId: node.id, index: idxLabel })}
+                                            onClick={() => handleActiveDrillNode({ controlId: control.id, nodeId: node.id, index: idxLabel })}
                                             className="text-[14px] text-indigo-600 font-semibold text-left hover:underline transition-all leading-relaxed"
                                          >
                                             {idxLabel} - {nodeText}
