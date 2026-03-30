@@ -234,4 +234,14 @@ export default function Compliance(fastify: FastifyInstance) {
       reply.status(500).send({ error: "Failed to fetch finding" });
     }
   });
+
+  fastify.get("/get-findings", async (req, reply) => {  
+    try {
+      const findings = await fastify.prisma.findings.findMany();
+      reply.send(findings);
+    } catch (err) {
+      console.error(err);
+      reply.status(500).send({ error: "Failed to fetch findings" });
+    }
+  });
 }

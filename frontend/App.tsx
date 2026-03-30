@@ -180,7 +180,8 @@ const App: React.FC = () => {
       .get("/frameworks/get-frameworks")
       .then((res) => setFrameworks(res.data))
       .catch((err) => console.error(err));
-    api.get("/frameworks/get-requirements")
+    api
+      .get("/frameworks/get-requirements")
       .then((res) => setControls(res.data))
       .catch((err) => console.error(err));
     api

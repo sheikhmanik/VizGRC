@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Assessment, NavigationTab, Control, Framework } from '../types';
 import api from './api/AxiosInstance';
+import { Link } from 'react-router-dom';
 
 type ComplianceViewMode = 'assessment' | 'audit';
 
@@ -198,18 +199,34 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
   };
 
   const updateFinding = (nodeId: string, field: keyof NodeAssessmentState, value: any) => {
-    setFindings(prev => ({
-      ...prev,
-      [nodeId]: {
-        ...(prev[nodeId] || { status: 'To do', mitigations: [], manualMitigations: [], observation: '', evidenceCount: 0 }),
-        [field]: value
+    // setFindings(prev => ({
+    //   ...prev,
+    //   [nodeId]: {
+    //     ...(prev[nodeId] || { status: 'To do', mitigations: [], manualMitigations: [], observation: '', evidenceCount: 0 }),
+    //     [field]: value
+    //   }      
+    // }));
+    setFindings(prev => {
+      const existingFinding = prev.findIndex(f => f.nodeId === nodeId);
+      if (existingFinding !== -1) {
+        const updatedFindings = [...prev];
+        updatedFindings[existingFinding] = {
+          ...updatedFindings[existingFinding],
+          [field]: value
+        };
+        return updatedFindings;
+      } else {
+        return [...prev, { nodeId, status: 'To do', mitigations: [], manualMitigations: [], observation: '', evidenceCount: 0, [field]: value }];
       }
-    }));
+    });
   };
 
   const addMitigation = (nodeId: string, internalId: string) => {
     if (internalId === 'none') return;
-    const current = findings[nodeId]?.mitigations || [];
+    // const current = findings[nodeId]?.mitigations || [];
+    const existing = findings.find(f => f.nodeId === nodeId);
+    const current = existing?.mitigations || [];
+    
     if (!current.includes(internalId)) {
       updateFinding(nodeId, 'mitigations', [...current, internalId]);
     }
@@ -217,18 +234,28 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
 
   const addManualMitigation = (nodeId: string) => {
     if (!manualInput.trim()) return;
-    const current = findings[nodeId]?.manualMitigations || [];
-    updateFinding(nodeId, 'manualMitigations', [...current, manualInput.trim()]);
+  
+    const existing = findings.find(f => f.nodeId === nodeId);
+  
+    const current = existing?.manualMitigations || [];
+  
+    updateFinding(nodeId, 'manualMitigations', [
+      ...current,
+      manualInput.trim()
+    ]);
+  
     setManualInput('');
   };
 
-  const removeMitigation = (nodeId: string, internalId: string) => {
-    const current = findings[nodeId]?.mitigations || [];
+  const removeMitigation = (nodeId: string, internalId: string) => {    
+    const existing = findings.find(f => f.nodeId === nodeId);
+    const current = existing?.mitigations || [];
     updateFinding(nodeId, 'mitigations', current.filter(id => id !== internalId));
   };
 
   const removeManualMitigation = (nodeId: string, text: string) => {
-    const current = findings[nodeId]?.manualMitigations || [];
+    const existing = findings.find(f => f.nodeId === nodeId);
+    const current = existing?.manualMitigations || [];
     updateFinding(nodeId, 'manualMitigations', current.filter(t => t !== text));
   };
 
@@ -262,11 +289,21 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
     setCurrentFindingDetails(null);
   }, [activeTab]);
 
+  useEffect(() => {
+    api
+      .get('/compliance/get-findings')
+      .then(res => {
+        setFindings(res.data);
+        console.log('Fetched findings:', res.data);
+      })
+      .catch(err => console.error('Failed to fetch findings:', err));
+  }, []);
+
   // DRILL-DOWN: THE NEXT PAGE
   if (activeDrillNode && (activeAssessment || activeAudit)) {
     const { controlId, nodeId, index } = activeDrillNode;
     const control = controls.find(c => c.id === controlId);
-    const nodeState = findings[nodeId] || { status: 'To do', mitigations: [], manualMitigations: [], observation: '', evidenceCount: 0 };
+    const nodeState = findings.map(f => f.nodeId === nodeId ? f : null).filter(f => f !== null)[0] || { status: 'To do', mitigations: [], manualMitigations: [], observation: '', evidenceCount: 0 };
     const requirementText = control?.customValues?.[nodeId] || control?.description;
 
     async function handleCommitFindings() {
@@ -290,6 +327,7 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
     
       try {
         await api.post("/compliance/save-findings", payload);
+        await api.get("/compliance/get-findings").then(res => setFindings(res.data));
     
         addAuditEntry(
           'Update Finding',
@@ -297,6 +335,7 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
         );
     
         setActiveDrillNode(null);
+        console.log(findings);
       } catch (err) {
         console.error(err);
         alert("Failed to save finding");
@@ -497,7 +536,7 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
                   className="hidden"
                 />
                 <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-slate-400 group-hover:text-blue-500 transition-colors mb-4">
-                    <Upload size={24} />
+                  <Upload size={24} />
                 </div>
                 {selectedFile ? (
                   <p className="text-sm text-slate-500 font-medium">{selectedFile.name}</p>
@@ -508,6 +547,16 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
                   </div>
                 )}
               </label>
+              {currentFindingDetails?.evidence && (
+                <a
+                  href={currentFindingDetails.evidence}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline text-blue-500"
+                >
+                  Click here to see the evidence
+                </a>
+              )}
             </section>
 
             <button 
@@ -620,12 +669,21 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
                           const level = control.customValues?.[`_level_${node.id}`] || 1;
                           const idxLabel = control.customValues?.[`_idx_${node.id}`] || '';
                           const nodeText = control.customValues?.[node.id] || '';
-                          const nodeState = findings[node.id] || { status: 'To do' };
+                          const nodeState = findings.map(f => {
+                            if (f.nodeId === node.id) {
+                              return f;
+                            } else {
+                              return null;
+                            }
+                          }).filter(f => f !== null)[0] || { status: 'To do' };
                           
                           async function handleActiveDrillNode({ controlId, nodeId, index }: { controlId: string; nodeId: string; index: string }) {
                             setActiveDrillNode({ controlId, nodeId, index });
                             await api.get(`/compliance/get-findings/${nodeId}/${controlId}`)
-                            .then(res => setCurrentFindingDetails(res.data))
+                            .then(res => {
+                              setCurrentFindingDetails(res.data);
+                              console.log("Fetched finding details:", res.data);
+                            })
                             .catch(err => {
                               console.error("Failed to fetch finding details:", err);
                             });
@@ -774,12 +832,21 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
                           const level = control.customValues?.[`_level_${node.id}`] || 1;
                           const idxLabel = control.customValues?.[`_idx_${node.id}`] || '';
                           const nodeText = control.customValues?.[node.id] || '';
-                          const nodeState = findings[node.id] || { status: 'To do' };
+                          const nodeState = findings.map(f => {
+                            if (f.nodeId === node.id) {
+                              return f;
+                            } else {
+                              return null;
+                            }
+                          }).filter(f => f !== null)[0] || { status: 'To do' };
 
                           async function handleActiveDrillNode({ controlId, nodeId, index }: { controlId: string; nodeId: string; index: string }) {
                             setActiveDrillNode({ controlId, nodeId, index });
                             await api.get(`/compliance/get-findings/${nodeId}/${controlId}`)
-                            .then(res => setCurrentFindingDetails(res.data))
+                            .then(res => {
+                              setCurrentFindingDetails(res.data);
+                              console.log("Fetched finding details:", res.data);
+                            })
                             .catch(err => {
                               console.error("Failed to fetch finding details:", err);
                             });
@@ -795,7 +862,7 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
                                 <div className="flex items-center gap-4 flex-1">
                                    <div className="flex items-center gap-3 flex-1">
                                       <span className="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-600 font-bold rounded border border-slate-200 uppercase tracking-widest min-w-[70px] text-center">
-                                         {nodeState.status}
+                                        {nodeState.status}
                                       </span>
                                       <div className="flex flex-col">
                                          <button 
