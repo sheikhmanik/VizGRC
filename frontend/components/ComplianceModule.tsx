@@ -198,32 +198,47 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
     })
   };
 
-  const updateFinding = (nodeId: string, field: keyof NodeAssessmentState, value: any) => {
-    // setFindings(prev => ({
-    //   ...prev,
-    //   [nodeId]: {
-    //     ...(prev[nodeId] || { status: 'To do', mitigations: [], manualMitigations: [], observation: '', evidenceCount: 0 }),
-    //     [field]: value
-    //   }      
-    // }));
+  const createDefaultFinding = (nodeId: string, controlId: string) => ({
+    nodeId,
+    controlId,
+    status: 'To do',
+    mitigations: [],
+    manualMitigations: [],
+    observation: '',
+    evidenceCount: 0,
+    evidence: '',
+    assessmentId: activeAssessment?.id || null,
+    auditId: activeAudit?.id || null,
+  });
+
+  const updateFinding = (
+    nodeId: string,
+    field: keyof NodeAssessmentState,
+    value: any
+  ) => {
     setFindings(prev => {
-      const existingFinding = prev.findIndex(f => f.nodeId === nodeId);
-      if (existingFinding !== -1) {
-        const updatedFindings = [...prev];
-        updatedFindings[existingFinding] = {
-          ...updatedFindings[existingFinding],
-          [field]: value
+      const index = prev.findIndex(f => f.nodeId === nodeId);
+  
+      if (index !== -1) {
+        const updated = [...prev];
+        updated[index] = {
+          ...updated[index],
+          [field]: value,
         };
-        return updatedFindings;
-      } else {
-        return [...prev, { nodeId, status: 'To do', mitigations: [], manualMitigations: [], observation: '', evidenceCount: 0, [field]: value }];
+        return updated;
       }
+
+      const newFinding = {
+        ...createDefaultFinding(nodeId, activeDrillNode.controlId),
+        [field]: value,
+      };
+  
+      return [...prev, newFinding];
     });
   };
 
   const addMitigation = (nodeId: string, internalId: string) => {
     if (internalId === 'none') return;
-    // const current = findings[nodeId]?.mitigations || [];
     const existing = findings.find(f => f.nodeId === nodeId);
     const current = existing?.mitigations || [];
     
@@ -286,6 +301,7 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
       setSelectedAssessmentId(null);
       setSelectedAuditId(null);
     }
+    setActiveDrillNode(null);
     setCurrentFindingDetails(null);
   }, [activeTab]);
 
@@ -303,7 +319,11 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
   if (activeDrillNode && (activeAssessment || activeAudit)) {
     const { controlId, nodeId, index } = activeDrillNode;
     const control = controls.find(c => c.id === controlId);
-    const nodeState = findings.map(f => f.nodeId === nodeId ? f : null).filter(f => f !== null)[0] || { status: 'To do', mitigations: [], manualMitigations: [], observation: '', evidenceCount: 0 };
+    const nodeState = findings.map(f => f.nodeId === nodeId ? f : null).filter(f => 
+      ((f !== null) && (activeAssessment ? activeAssessment.id === f.assessmentId : activeAudit.id === f.auditId)))[0]
+      || { status: 'To do', mitigations: [], manualMitigations: [], observation: '', evidenceCount: 0 }
+    ;
+
     const requirementText = control?.customValues?.[nodeId] || control?.description;
 
     async function handleCommitFindings() {
@@ -335,7 +355,7 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
         );
     
         setActiveDrillNode(null);
-        console.log(findings);
+        setSelectedFile(null);
       } catch (err) {
         console.error(err);
         alert("Failed to save finding");
@@ -670,7 +690,7 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
                           const idxLabel = control.customValues?.[`_idx_${node.id}`] || '';
                           const nodeText = control.customValues?.[node.id] || '';
                           const nodeState = findings.map(f => {
-                            if (f.nodeId === node.id) {
+                            if (f.nodeId === node.id && f.assessmentId === activeAssessment.id && !f.auditId) {
                               return f;
                             } else {
                               return null;
@@ -681,8 +701,14 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
                             setActiveDrillNode({ controlId, nodeId, index });
                             await api.get(`/compliance/get-findings/${nodeId}/${controlId}`)
                             .then(res => {
-                              setCurrentFindingDetails(res.data);
-                              console.log("Fetched finding details:", res.data);
+                              const response = res.data;
+                              if (response) {
+                                if (activeAssessment && response.assessmentId === activeAssessment.id) {
+                                  setCurrentFindingDetails(response);
+                                } else {
+                                  setCurrentFindingDetails(null);
+                                }
+                              }
                             })
                             .catch(err => {
                               console.error("Failed to fetch finding details:", err);
@@ -833,7 +859,7 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
                           const idxLabel = control.customValues?.[`_idx_${node.id}`] || '';
                           const nodeText = control.customValues?.[node.id] || '';
                           const nodeState = findings.map(f => {
-                            if (f.nodeId === node.id) {
+                            if (f.nodeId === node.id && f.auditId === activeAudit.id && !f.assessmentId) {
                               return f;
                             } else {
                               return null;
@@ -844,8 +870,14 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
                             setActiveDrillNode({ controlId, nodeId, index });
                             await api.get(`/compliance/get-findings/${nodeId}/${controlId}`)
                             .then(res => {
-                              setCurrentFindingDetails(res.data);
-                              console.log("Fetched finding details:", res.data);
+                              const response = res.data;
+                              if (response) {
+                                if (activeAudit && response.auditId === activeAudit.id) {
+                                  setCurrentFindingDetails(response);
+                                } else {
+                                  setCurrentFindingDetails(null);
+                                }
+                              }
                             })
                             .catch(err => {
                               console.error("Failed to fetch finding details:", err);
