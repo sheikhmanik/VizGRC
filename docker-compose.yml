@@ -9,13 +9,13 @@ services:
       - ./frontend/.env
     depends_on:
       - backend
-    # command: ["sh", "-c", "npm install && npm run dev"]
+    command: ["sh", "-c", "npm install && npm run dev"]
     
     # Development command (above is for production)
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    command: npm run dev
+    # volumes:
+    #   - ./frontend:/app
+    #   - /app/node_modules
+    # command: npm run dev
   
   backend:
     build:
@@ -28,13 +28,13 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    # command: ["sh", "-c", "npx prisma generate && npx prisma migrate deploy && node dist/server.js"]
+    command: ["sh", "-c", "npx prisma generate && npx prisma migrate deploy && node dist/server.js"]
 
     # Development command (above is for production)
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
-    command: npm run dev
+    # volumes:
+    #   - ./backend:/app
+    #   - /app/node_modules
+    # command: npm run dev
 
   db:
     image: postgres:15
