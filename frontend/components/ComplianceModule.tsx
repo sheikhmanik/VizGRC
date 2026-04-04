@@ -217,7 +217,7 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
     value: any
   ) => {
     setFindings(prev => {
-      const index = prev.findIndex(f => f.nodeId === nodeId);
+      const index = prev.findIndex(f => f.nodeId === nodeId && ((activeAssessment && f.assessmentId === activeAssessment.id) || (activeAudit && f.auditId === activeAudit.id)));
   
       if (index !== -1) {
         const updated = [...prev];
@@ -239,7 +239,7 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
 
   const addMitigation = (nodeId: string, internalId: string) => {
     if (internalId === 'none') return;
-    const existing = findings.find(f => f.nodeId === nodeId);
+    const existing = findings.find(f => f.nodeId === nodeId && ((activeAssessment && f.assessmentId === activeAssessment.id) || (activeAudit && f.auditId === activeAudit.id)));
     const current = existing?.mitigations || [];
     
     if (!current.includes(internalId)) {
@@ -250,7 +250,7 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
   const addManualMitigation = (nodeId: string) => {
     if (!manualInput.trim()) return;
   
-    const existing = findings.find(f => f.nodeId === nodeId);
+    const existing = findings.find(f => f.nodeId === nodeId && ((activeAssessment && f.assessmentId === activeAssessment.id) || (activeAudit && f.auditId === activeAudit.id)));
   
     const current = existing?.manualMitigations || [];
   
@@ -263,13 +263,13 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
   };
 
   const removeMitigation = (nodeId: string, internalId: string) => {    
-    const existing = findings.find(f => f.nodeId === nodeId);
+    const existing = findings.find(f => f.nodeId === nodeId && ((activeAssessment && f.assessmentId === activeAssessment.id) || (activeAudit && f.auditId === activeAudit.id)));
     const current = existing?.mitigations || [];
     updateFinding(nodeId, 'mitigations', current.filter(id => id !== internalId));
   };
 
   const removeManualMitigation = (nodeId: string, text: string) => {
-    const existing = findings.find(f => f.nodeId === nodeId);
+    const existing = findings.find(f => f.nodeId === nodeId && ((activeAssessment && f.assessmentId === activeAssessment.id) || (activeAudit && f.auditId === activeAudit.id)));
     const current = existing?.manualMitigations || [];
     updateFinding(nodeId, 'manualMitigations', current.filter(t => t !== text));
   };
@@ -327,10 +327,19 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
     const requirementText = control?.customValues?.[nodeId] || control?.description;
 
     async function handleCommitFindings() {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      const uploadRes = await api.post("/upload/evidence", formData);
-      const fileUrl = uploadRes.data.url;
+
+      if (!selectedFile && !nodeState?.evidence) {
+        alert("Please upload evidence before committing findings.");
+        return;
+      }
+
+      let fileUrl = nodeState?.evidence || '';
+      if (selectedFile) {
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        const uploadRes = await api.post("/upload/evidence", formData);
+        fileUrl = uploadRes.data.url;
+      }
 
       const payload = {
         nodeId,
@@ -544,10 +553,6 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
                <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2 px-1">
                 <FileStack size={14} className="text-amber-500" /> Evidence Option
               </h4>
-              {/* <div className="p-8 bg-white border border-slate-200 rounded-[2.5rem] flex flex-col items-center justify-center text-center group hover:border-blue-200 transition-all cursor-pointer border-dashed border-2">
-                  <FileUp size={32} className="text-slate-300 group-hover:text-blue-500 transition-colors mb-3" />
-                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Upload/Link Evidence</p>
-              </div> */}
               <label className="border-2 border-dashed border-slate-100 rounded-3xl p-12 flex flex-col items-center justify-center bg-slate-50/50 hover:bg-slate-50 transition-colors cursor-pointer group">
                 <input
                   type="file"
@@ -567,9 +572,9 @@ const ComplianceModule: React.FC<ComplianceModuleProps> = ({
                   </div>
                 )}
               </label>
-              {currentFindingDetails?.evidence && (
+              {nodeState?.evidence && (
                 <a
-                  href={currentFindingDetails.evidence}
+                  href={nodeState.evidence}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="underline text-blue-500"
