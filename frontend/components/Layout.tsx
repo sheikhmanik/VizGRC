@@ -87,7 +87,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, onLo
                 <X size={18} className="text-slate-400" />
               </button>
             </div>
-            <nav className="flex-1 space-y-1">
+            <nav className="flex-1 space-y-1 overflow-y-auto scrollbar-thin">
               {NAVIGATION_ITEMS.map((item) => {
                 const isParentActive = activeTab === item.id || (item.subItems && isTabInSubItems(activeTab, item.subItems));
                 return (
@@ -121,6 +121,25 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, onLo
                 );
               })}
             </nav>
+            <div className="border-t border-gray-200 border-slate-100 space-y-2 pt-2">
+              <button
+                onClick={() => {
+                  setActiveTab(NavigationTab.Profile);
+                  setMobileMenuOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 px-3 py-2 transition-colors group ${!isSidebarOpen ? 'justify-center' : ''} ${activeTab === NavigationTab.Profile ? 'text-blue-600 font-semibold' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                <User size={16} strokeWidth={1.4} className="shrink-0" />
+                {isSidebarOpen && <span className="text-[12px] font-medium">Profile</span>}
+              </button>
+              <button 
+                onClick={onLogout}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-rose-500 transition-colors group ${!isSidebarOpen ? 'justify-center' : ''}`}
+              >
+                <LogOut size={16} strokeWidth={1.4} className="shrink-0" />
+                {isSidebarOpen && <span className="text-[12px] font-medium">Logout</span>}
+              </button>
+            </div>
           </aside>
         </div>
       )}
