@@ -1,21 +1,21 @@
 services:
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    env_file:
-      - ./frontend/.env
-    depends_on:
-      - backend
-    command: ["sh", "-c", "npm install && npm run dev"]
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "3000:3000"
+  #   env_file:
+  #     - ./frontend/.env
+  #   depends_on:
+  #     - backend
+  #   command: ["sh", "-c", "npm install && npm run dev"]
     
-    # Development command (above is for production)
-    # volumes:
-    #   - ./frontend:/app
-    #   - /app/node_modules
-    # command: npm run dev
+  #   # Development command (above is for production)
+  #   # volumes:
+  #   #   - ./frontend:/app
+  #   #   - /app/node_modules
+  #   # command: npm run dev
   
   backend:
     build:
@@ -28,7 +28,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command: ["sh", "-c", "npx prisma generate && npx prisma migrate deploy && node dist/server.js"]
+    command: ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]
 
     # Development command (above is for production)
     # volumes:
