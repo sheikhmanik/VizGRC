@@ -75,7 +75,7 @@ const start = async () => {
     await initializeSystem();
     const port = Number(process.env.PORT) || 4000;
     await app.listen({ port, host: "0.0.0.0" });
-    console.log("🚀 Server running on http://localhost:4000");
+    console.log("Server is running 🚀");
   } catch (err) {
     app.log.error(err);
     process.exit(1);
