@@ -41,6 +41,28 @@ const Login: React.FC<LoginProps> = ({ onLogin, loginError } : LoginProps) => {
           {/* Shimmer effect when loading */}
           {isLoading && <div className="absolute top-0 left-0 w-full h-1 bg-blue-500 animate-[shimmer_2s_infinite_linear] origin-left"></div>}
           
+          {/* Demo credentials */}
+          <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-start gap-3 mb-4 -mt-3">
+            <div className="mt-1">
+              <ShieldCheck size={18} className="text-blue-500" />
+            </div>
+
+            <div className="text-[12px] text-slate-700 space-y-1">
+              <p className="font-semibold text-slate-800 tracking-wide">
+                Demo Credentials
+              </p>
+
+              <div className="text-slate-600">
+                <p>
+                  <span className="font-medium text-slate-800">Email:</span> admin@gmail.com
+                </p>
+                <p>
+                  <span className="font-medium text-slate-800">Password:</span> Admin@123
+                </p>
+              </div>
+            </div>
+          </div>
+          
           <form onSubmit={handleSubmit} className="space-y-8">
             <div className="space-y-6">
               <div className="space-y-2">

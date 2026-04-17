@@ -606,6 +606,20 @@ const SettingsModule: React.FC<SettingsModuleProps> = ({ addAuditEntry }) => {
       >
         <form onSubmit={handleAddUser} className="space-y-8">
           <div className="space-y-6">
+
+            {/* Demo Environment Notice */}
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3 -mt-2">
+              <Info size={18} className="text-amber-500 shrink-0 mt-0.5" />
+              <div className="text-[12px] text-amber-800 leading-relaxed">
+                <p className="font-semibold tracking-wide">
+                  Demo Environment Notice
+                </p>
+                <p className="text-amber-700 mt-1">
+                  Email delivery is currently limited. Invitations will only be sent to the administrator email configured for this demo.
+                </p>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest ml-1">Full Name</label>
               <input 
