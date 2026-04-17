@@ -12,14 +12,19 @@ const Login: React.FC<LoginProps> = ({ onLogin, loginError } : LoginProps) => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate API delay
-    setTimeout(() => {
-      onLogin({ name: 'Alex Rivera', role: 'GRC Lead', email, password });
+    try {
+      await onLogin({
+        name: 'Alex Rivera',
+        role: 'GRC Lead',
+        email,
+        password
+      });
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   return (
