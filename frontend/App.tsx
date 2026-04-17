@@ -18,6 +18,7 @@ import { jwtDecode } from "jwt-decode";
 import api from './components/api/AxiosInstance';
 import AcceptInvite from './components/AcceptInvite';
 import Profile from './components/Profile';
+import Loading from './components/ui/Loading';
 
 interface DecodedToken {
   exp: number;
@@ -57,6 +58,7 @@ const App: React.FC = () => {
   const [pipelineTasks, setPipelineTasks] = useState<PipelineTask[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditEntry[]>([]);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean | null>(null);
 
   const addAuditEntry = useCallback(async (action: string, details: string) => {
     if (!isAuthenticated || !user) return;
@@ -176,32 +178,45 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    api
-      .get("/frameworks/get-frameworks")
-      .then((res) => setFrameworks(res.data))
-      .catch((err) => console.error(err));
-    api
-      .get("/frameworks/get-requirements")
-      .then((res) => setControls(res.data))
-      .catch((err) => console.error(err));
-    api
-      .get("/assets/get-assets")
-      .then((res) => setAssets(res.data))
-      .catch((err) => console.error(err));
-    api
-      .get("/settings/get-user")
-      .then((res) => setUser(res.data))
-      .catch((err) => console.error(err?.response?.data?.message || err));
-    api
-      .get("/audit/get-logs")
-      .then((res) => setAuditLogs(res.data))
-      .catch((err) => console.error(err));
-    api.get('/compliance/get-assessments')
-      .then(response => setAssessments(response.data))
-      .catch(error => { console.error('Failed to fetch assessments:', error) });
-    api.get('/compliance/get-audits')
-      .then(response => setAudits(response.data))
-      .catch(error => { console.error('Failed to fetch assessments:', error) });
+  
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+  
+        const [
+          frameworksRes,
+          controlsRes,
+          assetsRes,
+          userRes,
+          auditLogsRes,
+          assessmentsRes,
+          auditsRes,
+        ] = await Promise.all([
+          api.get("/frameworks/get-frameworks"),
+          api.get("/frameworks/get-requirements"),
+          api.get("/assets/get-assets"),
+          api.get("/settings/get-user"),
+          api.get("/audit/get-logs"),
+          api.get("/compliance/get-assessments"),
+          api.get("/compliance/get-audits"),
+        ]);
+  
+        setFrameworks(frameworksRes.data);
+        setControls(controlsRes.data);
+        setAssets(assetsRes.data);
+        setUser(userRes.data);
+        setAuditLogs(auditLogsRes.data);
+        setAssessments(assessmentsRes.data);
+        setAudits(auditsRes.data);
+  
+      } catch (err: any) {
+        console.error(err?.response?.data?.message || err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+  
+    fetchData();
   }, [isAuthenticated]);
 
   const renderContent = () => {
@@ -291,6 +306,8 @@ const App: React.FC = () => {
   if (!authChecked) return null;
 
   if (!isAuthenticated) return <Login onLogin={handleLogin} loginError={loginError} />;
+
+  if (isLoading) return <Loading />;
 
   return (
     <Layout activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout}>
