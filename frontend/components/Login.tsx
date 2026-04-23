@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Command, Mail, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Command, Mail, Lock, ArrowRight, ShieldCheck, Info } from 'lucide-react';
 
 interface LoginProps {
   onLogin: (user: any) => void;
@@ -28,7 +28,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, loginError } : LoginProps) => {
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center p-6 bg-[#f8fafc]">
+    <div className="flex items-center justify-center p-6 bg-[#f8fafc]">
       {/* Background Elements */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-400/10 rounded-full blur-[120px] animate-pulse"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-400/10 rounded-full blur-[120px] animate-pulse"></div>
@@ -110,16 +110,27 @@ const Login: React.FC<LoginProps> = ({ onLogin, loginError } : LoginProps) => {
               </div>
             )}
 
-            <button 
-              disabled={isLoading}
-              type="submit" 
-              className={`w-full py-4.5 bg-slate-900 hover:bg-black text-white font-bold rounded-2xl text-[12px] tracking-[0.2em] transition-all duration-300 shadow-xl shadow-slate-200 flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50 ${isLoading ? 'cursor-not-allowed' : ''}`}
-            >
-              {isLoading ? 'ESTABLISHING HANDSHAKE...' : 'SECURE SIGN IN'}
-              {!isLoading && <ArrowRight size={16} />}
-            </button>
+            <div className="space-y-3">
+              <button 
+                disabled={isLoading}
+                type="submit" 
+                className={`w-full py-4.5 bg-slate-900 hover:bg-black text-white font-bold rounded-2xl text-[12px] tracking-[0.2em] transition-all duration-300 shadow-xl shadow-slate-200 flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50 ${isLoading ? 'cursor-not-allowed' : ''}`}
+              >
+                {isLoading ? 'ESTABLISHING HANDSHAKE...' : 'SECURE SIGN IN'}
+                {!isLoading && <ArrowRight size={16} />}
+              </button>
 
-            <div className="pt-6 border-t border-slate-50 flex items-center justify-center gap-2 text-[10px] text-slate-400 font-medium uppercase tracking-widest">
+              {isLoading && (
+                <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2.5">
+                  <Info size={13} className="text-amber-400 shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-amber-600 leading-relaxed">
+                    The backend is hosted on a free tier as no paid users yet, so the first request may take up to 50 seconds to wake up. Please be patient — it'll be fast after that. ☕
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-slate-50 flex items-center justify-center gap-2 text-[10px] text-slate-400 font-medium uppercase tracking-widest">
               <ShieldCheck size={14} className="text-emerald-500" />
               SAML 2.0 & MFA Enabled
             </div>
